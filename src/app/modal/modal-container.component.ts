@@ -1,57 +1,47 @@
-import {
-  AfterViewInit,
-  Component,
-  ComponentFactory,
-  ComponentFactoryResolver,
-  ComponentRef,
-  EventEmitter,
-  Inject,
-  Injector,
-  Output,
-  Renderer2,
-  StaticProvider,
-  Type,
-  ViewChild,
-  ViewContainerRef
-} from '@angular/core';
-import { MODAL_CONTENT_COMPONENT, MODAL_CONTENT_PROVIDERS } from './modal.service';
+import { ChangeDetectorRef, Component, EventEmitter, OnInit, Output, Type } from '@angular/core';
+import { ModalService, ModalState } from './modal.service';
 
 @Component({
   selector: 'app-modal-container',
   styleUrls: ['modal-container.component.scss'],
   template: `
-    <div role="dialog">
-      <h1>Modal header</h1>
-      <div #container></div>
-      <button (click)="close()">Close</button>
-    </div>
+    <section *ngIf="open">
+      <div role="dialog">
+        <h1>Modal header</h1>
+        <ng-container *ngIf="comp">
+          <ng-template [ngComponentOutlet]="comp"></ng-template>
+        </ng-container>
+        <button (click)="close()">Close</button>
+      </div>
+    </section>
+
   `
 })
-export class ModalContainerComponent implements AfterViewInit {
-  @ViewChild('container', { read: ViewContainerRef })
-  private container!: ViewContainerRef;
+export class ModalContainerComponent implements OnInit {
   @Output()
   public closeClicked: EventEmitter<void> = new EventEmitter<void>();
+  public comp!: Type<any>;
+  public open: boolean = false;
 
   public constructor(
-    private resolver: ComponentFactoryResolver,
-    @Inject(MODAL_CONTENT_COMPONENT) private contentComponent: Type<any>,
-    @Inject(MODAL_CONTENT_PROVIDERS) private contentProviders: StaticProvider[],
-    private renderer: Renderer2
+    private modalSvc: ModalService,
+    private changeSvc: ChangeDetectorRef
   ) {
   }
 
-  public ngAfterViewInit(): void {
-    const injector: Injector = Injector.create({ providers: this.contentProviders });
-    const factory: ComponentFactory<any> = this.resolver.resolveComponentFactory(this.contentComponent);
-    const componentRef: ComponentRef<any> = factory.create(injector);
-    this.renderer.appendChild(
-      this.container.element.nativeElement,
-      componentRef.location.nativeElement
-    );
+  public ngOnInit(): void {
+    this.modalSvc.state()
+      .subscribe((state: ModalState) => {
+        this.open = state.open;
+        this.changeSvc.detectChanges();
+        if (state.open) {
+          this.comp = state.component;
+        }
+      });
   }
 
   public close(): void {
     this.closeClicked.emit();
+    this.modalSvc.close();
   }
 }

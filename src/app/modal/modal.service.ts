@@ -1,51 +1,30 @@
-import {
-  ComponentFactory,
-  ComponentFactoryResolver,
-  ComponentRef,
-  Injectable,
-  InjectionToken,
-  Injector,
-  StaticProvider,
-  Type,
-  ViewContainerRef
-} from '@angular/core';
-import { ModalContainerComponent } from './modal-container.component';
+import { Injectable, Type } from '@angular/core';
+import { BehaviorSubject, Observable } from 'rxjs';
 
-export const MODAL_CONTENT_COMPONENT = new InjectionToken<Type<any>>('Modal content component');
-export const MODAL_CONTENT_PROVIDERS = new InjectionToken<StaticProvider[]>('Providers for modal content');
+export interface ClosedModalState {
+  open: false;
+}
 
-@Injectable({
-  providedIn: 'root'
-})
+export interface OpenModalState<T> {
+  open: true;
+  component: Type<T>
+}
+
+export type ModalState = ClosedModalState | OpenModalState<any>;
+
+@Injectable({ providedIn: 'root' })
 export class ModalService {
-  private currentCompRef: ComponentRef<ModalContainerComponent> | undefined = undefined;
+  private _state: BehaviorSubject<ModalState> = new BehaviorSubject<ModalState>({ open: false });
 
-  public constructor(private resolver: ComponentFactoryResolver) {
+  public state(): Observable<ModalState> {
+    return this._state.asObservable();
   }
 
-  public open<T>(viewContainerRef: ViewContainerRef, contentComponent: Type<T>, contentProviders?: StaticProvider[]): void {
-    if (this.currentCompRef) {
-      console.warn('This app only allows one modal at a time');
-      return;
-    }
-    const injector: Injector = Injector.create({
-      providers: [
-        { provide: MODAL_CONTENT_COMPONENT, useValue: contentComponent },
-        { provide: MODAL_CONTENT_PROVIDERS, useValue: contentProviders || [] }
-      ]
-    });
-    const factory: ComponentFactory<ModalContainerComponent> = this.resolver.resolveComponentFactory(ModalContainerComponent);
-    const componentRef: ComponentRef<ModalContainerComponent> = factory.create(injector);
-    componentRef.instance.closeClicked.subscribe(() => this.close());
-    viewContainerRef.insert(componentRef.hostView);
-    this.currentCompRef = componentRef;
+  public open<T>(comp: Type<T>) {
+    this._state.next({ open: true, component: comp });
   }
 
-  public close(): void {
-    // TODO destroy subscriptions
-    if (this.currentCompRef) {
-      this.currentCompRef.destroy();
-      this.currentCompRef = undefined;
-    }
+  public close() {
+    this._state.next({ open: false });
   }
 }
