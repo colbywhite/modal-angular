@@ -1,4 +1,4 @@
-import { Component, ViewContainerRef } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormComponent } from './form.component';
 import { ModalService } from './modal/modal.service';
 
@@ -15,14 +15,15 @@ import { ModalService } from './modal/modal.service';
         <h2>Form inside of modal</h2>
         <button (click)="open()">Open modal</button>
       </section>
+      <app-modal-container></app-modal-container>
     </main>
   `
 })
 export class AppComponent {
-  public constructor(private modalSvc: ModalService, private viewContainer: ViewContainerRef) {
+  public constructor(private modalSvc: ModalService) {
   }
 
   public open() {
-    this.modalSvc.open(this.viewContainer, FormComponent);
+    this.modalSvc.open(FormComponent);
   }
 }

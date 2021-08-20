@@ -1,57 +1,59 @@
 import {
-  AfterViewInit,
+  ChangeDetectorRef,
   Component,
   ComponentFactory,
   ComponentFactoryResolver,
   ComponentRef,
-  EventEmitter,
-  Inject,
   Injector,
-  Output,
-  Renderer2,
-  StaticProvider,
-  Type,
+  OnInit,
   ViewChild,
   ViewContainerRef
 } from '@angular/core';
-import { MODAL_CONTENT_COMPONENT, MODAL_CONTENT_PROVIDERS } from './modal.service';
+import { ModalService, ModalState } from './modal.service';
 
 @Component({
   selector: 'app-modal-container',
   styleUrls: ['modal-container.component.scss'],
   template: `
-    <div role="dialog">
-      <h1>Modal header</h1>
-      <div #container></div>
-      <button (click)="close()">Close</button>
-    </div>
+    <section *ngIf="open">
+      <div role="dialog" (click)="$event.stopPropagation()">
+        <button class="close" type="button" (click)="close()">
+          X
+        </button>
+        <h1>Modal header</h1>
+        <div #container></div>
+      </div>
+    </section>
   `
 })
-export class ModalContainerComponent implements AfterViewInit {
+export class ModalContainerComponent implements OnInit {
+  public open: boolean = false;
   @ViewChild('container', { read: ViewContainerRef })
   private container!: ViewContainerRef;
-  @Output()
-  public closeClicked: EventEmitter<void> = new EventEmitter<void>();
 
   public constructor(
     private resolver: ComponentFactoryResolver,
-    @Inject(MODAL_CONTENT_COMPONENT) private contentComponent: Type<any>,
-    @Inject(MODAL_CONTENT_PROVIDERS) private contentProviders: StaticProvider[],
-    private renderer: Renderer2
+    private modalSvc: ModalService,
+    private changeDetector: ChangeDetectorRef
   ) {
   }
 
-  public ngAfterViewInit(): void {
-    const injector: Injector = Injector.create({ providers: this.contentProviders });
-    const factory: ComponentFactory<any> = this.resolver.resolveComponentFactory(this.contentComponent);
-    const componentRef: ComponentRef<any> = factory.create(injector);
-    this.renderer.appendChild(
-      this.container.element.nativeElement,
-      componentRef.location.nativeElement
-    );
+  public ngOnInit() {
+    this.modalSvc.state()
+      .subscribe((state: ModalState) => {
+        this.open = state.open;
+        // force change detection in order for container to be present when open is flipped to true
+        this.changeDetector.detectChanges();
+        if (state.open && this.container) {
+          const injector: Injector = Injector.create({ providers: [] });
+          const factory: ComponentFactory<ModalContainerComponent> = this.resolver.resolveComponentFactory(state.component);
+          const componentRef: ComponentRef<ModalContainerComponent> = factory.create(injector);
+          this.container.insert(componentRef.hostView);
+        }
+      });
   }
 
-  public close(): void {
-    this.closeClicked.emit();
+  public close() {
+    this.modalSvc.close();
   }
 }
