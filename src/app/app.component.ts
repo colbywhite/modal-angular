@@ -1,5 +1,5 @@
 import { Component, ViewContainerRef } from '@angular/core';
-import { FormComponent } from './form.component';
+import { FormComponent } from './form/form.component';
 import { ModalService } from './modal/modal.service';
 
 @Component({
